@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>牛马鼓励器 · 实时计薪与打气</title>
+<meta name="description" content="把月薪换算成实时到手的每一分钱，配合下班倒计时、随机打气和主题皮肤，给打工人一点小小的鼓励。" />
+<style>
+  :root {
+    --bg-grad-1: #1c2440;
+    --bg-grad-2: #0d1117;
+    --bg-grad-3: #090c12;
+    --card-bg: rgba(22, 27, 38, 0.85);
+    --card-border: rgba(255, 255, 255, 0.07);
+    --text: #e6edf3;
+    --text-dim: #7d8896;
+    --text-bright: #c9d4e3;
+    --accent-1: #ffd873;
+    --accent-2: #ffb347;
+    --accent-3: #ff8a3d;
+    --accent-glow: rgba(255, 179, 71, 0.35);
+    --cd-color: #79b8ff;
+    --pulse: #3fb950;
+    --encourage-bg: linear-gradient(135deg, rgba(255, 179, 71, 0.08), rgba(63, 185, 80, 0.06));
+    --encourage-border: rgba(255, 179, 71, 0.25);
+    --input-bg: rgba(255, 255, 255, 0.04);
+    --input-border: rgba(255, 255, 255, 0.1);
+    --stat-bg: rgba(255, 255, 255, 0.03);
+    color-scheme: dark;
+  }
+  body[data-theme="sakura"] {
+    --bg-grad-1: #2a1a2e;
+    --bg-grad-2: #1a0f1f;
+    --bg-grad-3: #120a16;
+    --card-bg: rgba(40, 22, 44, 0.85);
+    --text: #f5e6f0;
+    --text-dim: #b89bb0;
+    --accent-1: #ffb6d5;
+    --accent-2: #ff8fb8;
+    --accent-3: #ff6ba0;
+    --accent-glow: rgba(255, 143, 184, 0.4);
+    --cd-color: #d4a5ff;
+    --pulse: #7ee08a;
+    --encourage-bg: linear-gradient(135deg, rgba(255, 143, 184, 0.10), rgba(212, 165, 255, 0.06));
+    --encourage-border: rgba(255, 143, 184, 0.3);
+  }
+  body[data-theme="money"] {
+    --bg-grad-1: #0d2818;
+    --bg-grad-2: #06150d;
+    --bg-grad-3: #030d07;
+    --card-bg: rgba(15, 40, 25, 0.85);
+    --text: #e6f5ec;
+    --text-dim: #7da88d;
+    --accent-1: #7fff9f;
+    --accent-2: #3ddc84;
+    --accent-3: #1fa85f;
+    --accent-glow: rgba(61, 220, 132, 0.4);
+    --cd-color: #7fff9f;
+    --pulse: #3ddc84;
+    --encourage-bg: linear-gradient(135deg, rgba(61, 220, 132, 0.10), rgba(127, 255, 159, 0.05));
+    --encourage-border: rgba(61, 220, 132, 0.3);
+  }
+  body[data-theme="cyber"] {
+    --bg-grad-1: #1a0d2e;
+    --bg-grad-2: #0d0618;
+    --bg-grad-3: #060310;
+    --card-bg: rgba(26, 13, 46, 0.85);
+    --text: #e6e0f5;
+    --text-dim: #9b8fc0;
+    --accent-1: #00f0ff;
+    --accent-2: #7b61ff;
+    --accent-3: #ff2e88;
+    --accent-glow: rgba(123, 97, 255, 0.45);
+    --cd-color: #00f0ff;
+    --pulse: #00f0ff;
+    --encourage-bg: linear-gradient(135deg, rgba(0, 240, 255, 0.10), rgba(255, 46, 136, 0.06));
+    --encourage-border: rgba(0, 240, 255, 0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: radial-gradient(1200px 800px at 20% -10%, var(--bg-grad-1) 0%, var(--bg-grad-2) 45%, var(--bg-grad-3) 100%);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background 0.6s ease;
+  }
+  .app {
+    width: 100%;
+    max-width: 920px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 20px;
+    position: relative;
+    z-index: 2;
+  }
+  @media (max-width: 760px) { .app { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(12px);
+    transition: background 0.6s ease, border-color 0.6s ease;
+  }
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 4px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .logo { font-size: 30px; filter: drop-shadow(0 0 14px var(--accent-glow)); }
+  .brand h1 { font-size: 22px; font-weight: 700; letter-spacing: 2px; color: var(--text-bright); }
+  .brand .tag { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .theme-switch {
+    display: flex;
+    gap: 8px;
+    background: var(--stat-bg);
+    border: 1px solid var(--card-border);
+    padding: 6px;
+    border-radius: 999px;
+  }
+  .theme-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+  }
+  .theme-btn.active {
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-3));
+    color: #1a1208;
+    font-weight: 700;
+    box-shadow: 0 4px 14px var(--accent-glow);
+  }
+  .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 22px; }
+
+  .earn-label {
+    font-size: 13px; color: var(--text-dim); letter-spacing: 1px;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--pulse);
+    box-shadow: 0 0 0 0 var(--pulse);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 var(--pulse); opacity: 1; }
+    70% { box-shadow: 0 0 0 12px transparent; opacity: 0.6; }
+    100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+  }
+  .earn-amount {
+    font-size: clamp(48px, 9vw, 76px);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 55%, var(--accent-3) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 30px var(--accent-glow));
+    line-height: 1.1;
+    margin-bottom: 4px;
+    word-break: break-all;
+  }
+  .earn-sub {
+    color: var(--text-dim); font-size: 13px;
+    font-variant-numeric: tabular-nums; margin-bottom: 22px;
+  }
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-bottom: 22px;
+  }
+  .stat {
+    background: var(--stat-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .stat .k { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .stat .v {
+    font-size: 18px; font-weight: 700;
+    font-variant-numeric: tabular-nums; color: var(--text);
+  }
+  .stat .v.gold {
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-3));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .encourage-box {
+    background: var(--encourage-bg);
+    border: 1px solid var(--encourage-border);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    min-height: 120px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .encourage-text {
+    font-size: 17px; line-height: 1.6;
+    color: var(--text); font-weight: 500;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .encourage-text.swap { opacity: 0; transform: translateY(6px); }
+  .encourage-meta { margin-top: 10px; font-size: 12px; color: var(--text-dim); }
+  .btn {
+    margin-top: 16px; align-self: flex-start;
+    background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+    color: #1a1208; border: none; border-radius: 999px;
+    padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 20px var(--accent-glow);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px var(--accent-glow); }
+  .btn:active { transform: translateY(0); }
+  .btn.ghost {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--card-border); box-shadow: none;
+  }
+  .btn.ghost:hover { color: var(--text); border-color: var(--accent-2); }
+
+  .countdown-card { position: relative; overflow: hidden; }
+  .countdown-card::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(600px 300px at 80% 0%, var(--accent-glow), transparent 70%);
+    opacity: 0.25; pointer-events: none;
+  }
+  .cd-title {
+    font-size: 14px; color: var(--text-dim);
+    letter-spacing: 1px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .cd-time {
+    font-size: clamp(36px, 6vw, 52px);
+    font-weight: 800; font-variant-numeric: tabular-nums;
+    color: var(--cd-color); letter-spacing: 1px;
+    line-height: 1.1; margin-bottom: 16px;
+    text-shadow: 0 0 30px var(--accent-glow);
+  }
+  .cd-time.done { color: var(--pulse); }
+  .cd-progress {
+    height: 8px; background: var(--stat-bg);
+    border-radius: 999px; overflow: hidden; margin-bottom: 8px;
+  }
+  .cd-progress .bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--cd-color), var(--pulse));
+    border-radius: 999px; transition: width 0.6s ease;
+  }
+  .cd-pct { font-size: 12px; color: var(--text-dim); text-align: right; margin-bottom: 20px; }
+  .setup h2 {
+    font-size: 15px; color: var(--text-bright);
+    margin-bottom: 14px; font-weight: 600;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 12px; color: var(--text);
+    font-size: 15px; padding: 10px 14px;
+    font-variant-numeric: tabular-nums;
+    outline: none; transition: border-color 0.15s ease;
+    font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent-2); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .footnote { margin-top: 14px; font-size: 11px; color: var(--text-dim); line-height: 1.6; opacity: 0.7; }
+  .toast {
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card-bg);
+    border: 1px solid var(--accent-2);
+    color: var(--accent-1);
+    padding: 10px 20px; border-radius: 999px; font-size: 13px;
+    opacity: 0; pointer-events: none;
+    transition: all 0.3s ease; z-index: 99;
+    box-shadow: 0 10px 30px var(--accent-glow);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* floating particles */
+  .particle {
+    position: fixed;
+    font-size: 22px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+    animation: floatUp linear forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translateY(0) rotate(0deg); }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.4; }
+    100% { opacity: 0; transform: translateY(-110vh) rotate(360deg); }
+  }
+  .confetti {
+    position: fixed; top: -40px;
+    pointer-events: none; z-index: 98;
+    transition: transform 2.6s ease-in, opacity 2.6s ease-in;
+  }
+</style>
+</head>
+<body data-theme="gold">
+  <!-- floating background particles -->
+  <div id="particles"></div>
+
+  <div class="app">
+    <!-- top bar: brand + theme switcher -->
+    <div class="topbar">
+      <div class="brand">
+        <span class="logo">🐮</span>
+        <div>
+          <h1>牛马鼓励器</h1>
+          <div class="tag">实时计薪 · 下班倒计时 · 随机打气</div>
+        </div>
+      </div>
+      <div class="theme-switch" id="themeSwitch">
+        <button class="theme-btn active" data-theme="gold">💰 金</button>
+        <button class="theme-btn" data-theme="sakura">🌸 樱</button>
+        <button class="theme-btn" data-theme="money">💸 绿</button>
+        <button class="theme-btn" data-theme="cyber">🌌 赛博</button>
+      </div>
+    </div>
+
+    <!-- Left: earnings + encouragement -->
+    <div class="card">
+      <div class="subtitle">每一秒都在为你数钱 · 牛马辛苦了</div>
+
+      <div class="earn-label">
+        <span class="pulse-dot"></span>
+        本月上班到现在，你已经赚了
+      </div>
+      <div class="earn-amount" id="earnAmount">¥0.00</div>
+      <div class="earn-sub" id="earnSub">每小时 ≈ ¥0.00 · 每秒 ≈ ¥0.0000</div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="k">今日已赚</div>
+          <div class="v gold" id="statToday">¥0.00</div>
+        </div>
+        <div class="stat">
+          <div class="k">本周已赚</div>
+          <div class="v" id="statWeek">¥0.00</div>
+        </div>
+        <div class="stat">
+          <div class="k">本月已赚</div>
+          <div class="v" id="statMonth">¥0.00</div>
+        </div>
+      </div>
+
+      <div class="encourage-box">
+        <div class="encourage-text" id="encourageText">加载中…</div>
+        <div class="encourage-meta" id="encourageMeta"></div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn" id="btnCheer">📣 再来一句</button>
+          <button class="btn ghost" id="btnCustom">✏️ 自定义鼓励语</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: countdown + settings -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div class="card countdown-card">
+        <div class="cd-title">🕐 距离下班还有</div>
+        <div class="cd-time" id="cdTime">--:--:--</div>
+        <div class="cd-progress"><div class="bar" id="cdBar"></div></div>
+        <div class="cd-pct" id="cdPct">已完成 0%</div>
+      </div>
+
+      <div class="card setup">
+        <h2>⚙️ 我的工资参数</h2>
+        <div class="field">
+          <label>月薪（税前 / 期望到手均可，随意填）</label>
+          <input type="number" id="inSalary" min="0" step="100" placeholder="例如 15000" />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>上班时间</label>
+            <input type="time" id="inStart" />
+          </div>
+          <div class="field">
+            <label>下班时间</label>
+            <input type="time" id="inEnd" />
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>每周工作天数</label>
+            <select id="inDays">
+              <option value="5">5 天（双休）</option>
+              <option value="6">6 天（单休）</option>
+              <option value="7">7 天（牛马模式）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>午休（分钟，自动扣除）</label>
+            <input type="number" id="inBreak" min="0" max="240" step="15" />
+          </div>
+        </div>
+        <div class="field">
+          <label>我的专属鼓励语（一行一句，留空用内置）</label>
+          <textarea id="inCheer" placeholder="例如：&#10;今天也要做一只快乐的牛马&#10;老板画饼时记得看这个页面"></textarea>
+        </div>
+        <div class="footnote">
+          数据只保存在当前浏览器（localStorage），不会上传。估算不含税费、奖金和实际考勤扣款，纯为打气服务。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var LS_KEY = "shangban_encourager_v2";
+  var THEMES = ["gold", "sakura", "money", "cyber"];
+  var THEME_EMOJI = {
+    gold: ["💰", "🪙", "💵", "✨"],
+    sakura: ["🌸", "💮", "🌷", "✨"],
+    money: ["💸", "💵", "🪙", "🌿"],
+    cyber: ["⚡", "🌐", "🔮", "💠"]
+  };
+
+  var defaults = {
+    salary: 15000,
+    start: "09:30",
+    end: "18:30",
+    daysPerWeek: 5,
+    breakMinutes: 60,
+    theme: "gold",
+    customCheer: ""
+  };
+
+  var BUILTIN_CHEERS = [
+    "别急，你的工资正在路上。",
+    "熬过去，这班就上完了。",
+    "你敲下的每一行，都在给月底的奶茶攒钱。",
+    "牛马不哭，牛马只数钱。",
+    "下班之后，你才是你自己。",
+    "今天的每一分钟，都换算成了你的 ¥。",
+    "老板画饼的时候，记得看看这个页面的数字。",
+    "你不是在打工，你是在给自己的未来充值。",
+    "坚持住，周末比想象中更近。",
+    "累就对了，舒服是留给下班后的。",
+    "你的时薪在涨，你的怨气也在涨，但工资更实在。",
+    "摸鱼五分钟，快乐一小时。",
+    "这份工作不能定义你，但它的工资可以请你吃饭。",
+    "深呼吸。你在赚钱，不是在服刑。",
+    "今天也要做一只快乐的、会数钱的牛马。",
+    "再坚持一下下，进度条不会骗人。",
+    "你不是社畜，你是有 KPI 的都市牧羊人。",
+    "工资条不会迟到，但下班会。",
+    "把委屈折成钱，月底一起兑现。",
+    "此刻的你，是时间的主人（除了 KPI）"
+  ];
+
+  var MILESTONES = [
+    { yuan: 0,    text: "上班打卡成功，数钱开始！" },
+    { yuan: 10,   text: "已经赚了 ¥10，够一杯瑞幸了 ☕" },
+    { yuan: 20,   text: "¥20 到手，喜茶自由进行中 🧋" },
+    { yuan: 50,   text: "半百达成！一顿工作餐有着落了 🍱" },
+    { yuan: 100,  text: "破百！今天的奶茶基金已就位 🎉" },
+    { yuan: 200,  text: "¥200，一只小龙虾的距离 🦞" },
+    { yuan: 500,  text: "五百块！今日战绩相当可以 💪" },
+    { yuan: 1000, text: "破千！！今天你是真·数钱上头 💰" }
+  ];
+
+  var state = load() || {};
+  var settings = Object.assign({}, defaults, state.settings);
+  var lastMilestone = state.lastMilestone || 0;
+
+  // ---------- DOM ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var elEarn = $("earnAmount"),
+      elEarnSub = $("earnSub"),
+      elToday = $("statToday"),
+      elWeek = $("statWeek"),
+      elMonth = $("statMonth"),
+      elEncourage = $("encourageText"),
+      elEncourageMeta = $("encourageMeta"),
+      elBtn = $("btnCheer"),
+      elBtnCustom = $("btnCustom"),
+      elCd = $("cdTime"),
+      elBar = $("cdBar"),
+      elPct = $("cdPct"),
+      elToast = $("toast"),
+      inSalary = $("inSalary"),
+      inStart = $("inStart"),
+      inEnd = $("inEnd"),
+      inDays = $("inDays"),
+      inBreak = $("inBreak"),
+      inCheer = $("inCheer"),
+      themeSwitch = $("themeSwitch");
+
+  // ---------- theme ----------
+  function applyTheme(t) {
+    if (THEMES.indexOf(t) === -1) t = "gold";
+    settings.theme = t;
+    document.body.setAttribute("data-theme", t);
+    Array.prototype.forEach.call(themeSwitch.querySelectorAll(".theme-btn"), function (b) {
+      b.classList.toggle("active", b.getAttribute("data-theme") === t);
+    });
+    persist();
+    spawnParticles(12);
+  }
+  themeSwitch.addEventListener("click", function (e) {
+    var b = e.target.closest(".theme-btn");
+    if (b) applyTheme(b.getAttribute("data-theme"));
+  });
+
+  // ---------- particles ----------
+  function spawnParticles(n) {
+    var container = $("particles");
+    var emojis = THEME_EMOJI[settings.theme] || THEME_EMOJI.gold;
+    for (var i = 0; i < n; i++) {
+      var el = document.createElement("div");
+      el.className = "particle";
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = Math.random() * 100 + "vw";
+      el.style.bottom = "-40px";
+      el.style.fontSize = (16 + Math.random() * 22) + "px";
+      el.style.animationDuration = (6 + Math.random() * 8) + "s";
+      container.appendChild(el);
+      setTimeout(function (p) { p.remove(); }, 15000, el);
+    }
+  }
+  // ambient particles: one every 3s
+  setInterval(function () { spawnParticles(1); }, 3000);
+
+  // ---------- settings ----------
+  function fmtTime(t) {
+    var p = t.split(":");
+    return (parseInt(p[0], 10) * 60) + (parseInt(p[1], 10) || 0);
+  }
+  function rawShiftMinutes() {
+    var r = fmtTime(settings.end) - fmtTime(settings.start);
+    return r <= 0 ? r + 24 * 60 : r;
+  }
+  function effShiftMinutes() {
+    return Math.max(0, rawShiftMinutes() - (settings.breakMinutes || 0));
+  }
+  function hourRate() {
+    var eff = effShiftMinutes() / 60;
+    if (!eff) return 0;
+    return settings.salary / (eff * (settings.daysPerWeek || 5) * 4.33);
+  }
+  function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+  function readSettingsFromForm() {
+    settings.salary = clamp(parseFloat(inSalary.value) || 0, 0, 1e9);
+    settings.start = inStart.value || settings.start;
+    settings.end = inEnd.value || settings.end;
+    settings.daysPerWeek = clamp(parseInt(inDays.value, 10) || 5, 1, 7);
+    settings.breakMinutes = clamp(parseInt(inBreak.value, 10) || 0, 0, 240);
+    settings.customCheer = inCheer.value || "";
+    persist();
+  }
+  function applyForm() {
+    inSalary.value = settings.salary;
+    inStart.value = settings.start;
+    inEnd.value = settings.end;
+    inDays.value = settings.daysPerWeek;
+    inBreak.value = settings.breakMinutes;
+    inCheer.value = settings.customCheer;
+  }
+
+  [inSalary, inStart, inEnd, inDays, inBreak].forEach(function (el) {
+    el.addEventListener("change", function () {
+      readSettingsFromForm();
+      toast("参数已保存，继续数钱 💰");
+    });
+  });
+  inCheer.addEventListener("change", function () {
+    readSettingsFromForm();
+    pickCheer(true);
+    toast("鼓励语已更新 ✏️");
+  });
+
+  function persist() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        settings: settings,
+        lastMilestone: lastMilestone
+      }));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  // ---------- time ----------
+  function minutesSinceMidnight(d) {
+    return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+  }
+  function todayProgress(now) {
+    var s = fmtTime(settings.start), e = fmtTime(settings.end);
+    var crosses = e <= s;
+    if (crosses) e += 24 * 60;
+    var m = minutesSinceMidnight(now);
+    var rawElapsed = crosses && m < s ? (24 * 60 - s) + m : m - s;
+    var rawTotal = e - s;
+    var ratio = effShiftMinutes() / rawTotal;
+    rawElapsed = clamp(rawElapsed, 0, rawTotal);
+    return {
+      effTotal: rawTotal * ratio,
+      effElapsed: rawElapsed * ratio,
+      effRemaining: Math.max(0, (rawTotal - rawElapsed) * ratio)
+    };
+  }
+
+  // ---------- money ----------
+  function moneyEarnedNow(now) {
+    var rate = hourRate();
+    if (!rate) return { today: 0, week: 0, month: 0 };
+    var prog = todayProgress(now);
+    var today = prog.effElapsed * 60 * rate;
+
+    var week = 0;
+    var ws = startOfWeek(now);
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(ws);
+      d.setDate(ws.getDate() + i);
+      if (!isWorkday(d)) continue;
+      if (sameDay(d, now)) week += today;
+      else if (d < nowStartOfDay(now)) week += effShiftMinutes() * 60 * rate;
+    }
+
+    var month = 0;
+    var ms = new Date(now.getFullYear(), now.getMonth(), 1);
+    for (var j = 0; j < 31; j++) {
+      var d2 = new Date(ms);
+      d2.setDate(1 + j);
+      if (d2.getMonth() !== now.getMonth()) break;
+      if (!isWorkday(d2)) continue;
+      if (sameDay(d2, now)) month += today;
+      else if (d2 < nowStartOfDay(now)) month += effShiftMinutes() * 60 * rate;
+    }
+    return { today: today, week: week, month: month };
+  }
+  function nowStartOfDay(now) { var d = new Date(now); d.setHours(0,0,0,0); return d; }
+  function sameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+  function startOfWeek(now) {
+    var d = new Date(now); d.setHours(0,0,0,0);
+    var day = d.getDay() === 0 ? 7 : d.getDay();
+    d.setDate(d.getDate() - (day - 1));
+    return d;
+  }
+  function isWorkday(d) {
+    var dow = d.getDay();
+    var days = settings.daysPerWeek || 5;
+    if (days >= 7) return true;
+    if (days === 6) return dow !== 0;
+    return dow >= 1 && dow <= 5;
+  }
+
+  // ---------- format ----------
+  function fmtMoney(n) {
+    return "¥" + n.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtHMS(mins) {
+    if (mins <= 0) return "00:00:00";
+    var totalSec = Math.floor(mins * 60);
+    var h = Math.floor(totalSec / 3600);
+    var m = Math.floor((totalSec % 3600) / 60);
+    var s = totalSec % 60;
+    return pad(h) + ":" + pad(m) + ":" + pad(s);
+  }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  // ---------- encourage ----------
+  function cheerPool() {
+    var custom = (settings.customCheer || "")
+      .split("\n").map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
+    var pool = custom.length ? custom : BUILTIN_CHEERS;
+    return pool;
+  }
+  var lastCheer = "";
+  function pickCheer() {
+    var pool = cheerPool().filter(function (c) { return c !== lastCheer; });
+    if (!pool.length) pool = cheerPool();
+    var next = pool[Math.floor(Math.random() * pool.length)];
+    lastCheer = next;
+    swapText(elEncourage, next);
+    var src = (settings.customCheer || "").trim() ? "— 你的专属鼓励语" : "— 来自一位懂你的 AI 朋友";
+    elEncourageMeta.textContent = src;
+  }
+  function swapText(el, txt) {
+    el.classList.add("swap");
+    setTimeout(function () {
+      el.textContent = txt;
+      el.classList.remove("swap");
+    }, 200);
+  }
+  elBtn.addEventListener("click", function () {
+    pickCheer();
+    beep();
+    spawnParticles(6);
+  });
+  elBtnCustom.addEventListener("click", function () {
+    inCheer.focus();
+    inCheer.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  // ---------- milestone ----------
+  function checkMilestone(earned) {
+    for (var i = MILESTONES.length - 1; i >= 0; i--) {
+      if (earned >= MILESTONES[i].yuan && lastMilestone < MILESTONES[i].yuan) {
+        lastMilestone = MILESTONES[i].yuan;
+        persist();
+        toast("🎉 " + MILESTONES[i].text);
+        beep();
+        confetti();
+        break;
+      }
+    }
+  }
+
+  // ---------- toast ----------
+  var toastTimer = null;
+  function toast(msg) {
+    elToast.textContent = msg;
+    elToast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { elToast.classList.remove("show"); }, 2600);
+  }
+
+  // ---------- audio ----------
+  var audioCtx = null;
+  function beep() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(880, audioCtx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(1320, audioCtx.currentTime + 0.12);
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      o.stop(audioCtx.currentTime + 0.4);
+    } catch (e) {}
+  }
+
+  // ---------- confetti ----------
+  function confetti() {
+    var emojis = THEME_EMOJI[settings.theme] || THEME_EMOJI.gold;
+    var extra = ["🎉", "🥳", "✨"];
+    for (var i = 0; i < 28; i++) {
+      var el = document.createElement("div");
+      el.className = "confetti";
+      el.textContent = (i % 3 === 0 ? extra : emojis)[i % (i % 3 === 0 ? extra.length : emojis.length)];
+      el.style.left = (Math.random() * 100) + "vw";
+      el.style.fontSize = (18 + Math.random() * 24) + "px";
+      document.body.appendChild(el);
+      (function (n) {
+        requestAnimationFrame(function () {
+          n.style.transform = "translateY(110vh) rotate(" + (Math.random() * 720 - 360) + "deg)";
+          n.style.opacity = "0";
+        });
+      })(el);
+      setTimeout(function () { el.remove(); }, 2800);
+    }
+  }
+
+  // ---------- main tick ----------
+  var autoCheerTimer = 0;
+  function tick() {
+    var now = new Date();
+    var money = moneyEarnedNow(now);
+    elEarn.textContent = fmtMoney(money.month);
+    var rate = hourRate();
+    elEarnSub.textContent = "每小时 ≈ " + fmtMoney(rate) + " · 每秒 ≈ ¥" + (rate / 3600).toFixed(4) + " · 本月累计";
+    elToday.textContent = fmtMoney(money.today);
+    elWeek.textContent = fmtMoney(money.week);
+    elMonth.textContent = fmtMoney(money.month);
+
+    var prog = todayProgress(now);
+    var pct = prog.effTotal > 0 ? clamp((1 - prog.effRemaining / prog.effTotal) * 100, 0, 100) : 0;
+    if (prog.effRemaining <= 0 && pct >= 100) {
+      elCd.textContent = "已下班 🎉";
+      elCd.classList.add("done");
+      elBar.style.width = "100%";
+      elPct.textContent = "已完成 100% · 今天辛苦了";
+    } else {
+      elCd.textContent = fmtHMS(prog.effRemaining);
+      elCd.classList.remove("done");
+      elBar.style.width = pct + "%";
+      elPct.textContent = "已完成 " + pct.toFixed(1) + "%";
+    }
+
+    checkMilestone(money.month);
+
+    autoCheerTimer++;
+    if (autoCheerTimer >= 45) { autoCheerTimer = 0; pickCheer(); }
+  }
+
+  // ---------- init ----------
+  applyForm();
+  applyTheme(settings.theme);
+  pickCheer();
+  spawnParticles(10);
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
