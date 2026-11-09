@@ -77,17 +77,19 @@
     --encourage-border: rgba(0, 240, 255, 0.3);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; }
+  html { height: 100%; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
     background: radial-gradient(1200px 800px at 20% -10%, var(--bg-grad-1) 0%, var(--bg-grad-2) 45%, var(--bg-grad-3) 100%);
+    background-attachment: fixed;
     color: var(--text);
     display: flex;
-    align-items: center;
     justify-content: center;
-    padding: 24px;
+    align-items: flex-start;
+    padding: 32px 24px;
     min-height: 100vh;
     overflow-x: hidden;
+    overflow-y: auto;
     transition: background 0.6s ease;
   }
   .app {
@@ -98,6 +100,7 @@
     gap: 20px;
     position: relative;
     z-index: 2;
+    margin: auto 0;
   }
   @media (max-width: 760px) { .app { grid-template-columns: 1fr; } }
   .card {
@@ -347,7 +350,7 @@
 
       <div class="earn-label">
         <span class="pulse-dot"></span>
-        本月上班到现在，你已经赚了
+        上班到现在，你今天已经赚了
       </div>
       <div class="earn-amount" id="earnAmount">¥0.00</div>
       <div class="earn-sub" id="earnSub">每小时 ≈ ¥0.00 · 每秒 ≈ ¥0.0000</div>
@@ -562,8 +565,12 @@
   }
   function hourRate() {
     var eff = effShiftMinutes() / 60;
-    if (!eff) return 0;
-    return settings.salary / (eff * (settings.daysPerWeek || 5) * 4.33);
+    if (!eff || !isFinite(eff) || eff <= 0) return 0;
+    var days = settings.daysPerWeek;
+    if (!days || days <= 0 || !isFinite(days)) return 0;
+    var rate = settings.salary / (eff * days * 4.33);
+    if (!isFinite(rate) || rate < 0) return 0;
+    return rate;
   }
   function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
@@ -634,10 +641,13 @@
 
   // ---------- money ----------
   function moneyEarnedNow(now) {
-    var rate = hourRate();
+    var rate = hourRate(); // per hour
+    var perMinute = rate / 60;
     if (!rate) return { today: 0, week: 0, month: 0 };
-    var prog = todayProgress(now);
-    var today = prog.effElapsed * 60 * rate;
+    // Non-workday (weekend): today = 0, rest day no earnings
+    var today = isWorkday(now) ? todayProgress(now).effElapsed * perMinute : 0;
+    var startOfToday = nowStartOfDay(now).getTime();
+    var fullDayPay = effShiftMinutes() * perMinute; // minutes × per-minute
 
     var week = 0;
     var ws = startOfWeek(now);
@@ -645,8 +655,9 @@
       var d = new Date(ws);
       d.setDate(ws.getDate() + i);
       if (!isWorkday(d)) continue;
+      var dTime = d.getTime();
       if (sameDay(d, now)) week += today;
-      else if (d < nowStartOfDay(now)) week += effShiftMinutes() * 60 * rate;
+      else if (dTime < startOfToday) week += fullDayPay;
     }
 
     var month = 0;
@@ -656,8 +667,9 @@
       d2.setDate(1 + j);
       if (d2.getMonth() !== now.getMonth()) break;
       if (!isWorkday(d2)) continue;
+      var d2Time = d2.getTime();
       if (sameDay(d2, now)) month += today;
-      else if (d2 < nowStartOfDay(now)) month += effShiftMinutes() * 60 * rate;
+      else if (d2Time < startOfToday) month += fullDayPay;
     }
     return { today: today, week: week, month: month };
   }
@@ -681,7 +693,15 @@
 
   // ---------- format ----------
   function fmtMoney(n) {
+    if (!isFinite(n) || n < 0) n = 0;
     return "¥" + n.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  // compact money for the big hero number: use 万/亿 for readability
+  function fmtMoneyCompact(n) {
+    if (!isFinite(n) || n < 0) n = 0;
+    if (n >= 1e8) return "¥" + (n / 1e8).toFixed(2) + " 亿";
+    if (n >= 1e4) return "¥" + (n / 1e4).toFixed(2) + " 万";
+    return fmtMoney(n);
   }
   function fmtHMS(mins) {
     if (mins <= 0) return "00:00:00";
@@ -796,9 +816,10 @@
   function tick() {
     var now = new Date();
     var money = moneyEarnedNow(now);
-    elEarn.textContent = fmtMoney(money.month);
     var rate = hourRate();
-    elEarnSub.textContent = "每小时 ≈ " + fmtMoney(rate) + " · 每秒 ≈ ¥" + (rate / 3600).toFixed(4) + " · 本月累计";
+    // Hero: show TODAY's earnings (more relatable than monthly)
+    elEarn.textContent = fmtMoneyCompact(money.today);
+    elEarnSub.textContent = "每小时 ≈ " + fmtMoney(rate) + " · 每秒 ≈ ¥" + (rate / 3600).toFixed(4) + " · 本月累计 " + fmtMoneyCompact(money.month);
     elToday.textContent = fmtMoney(money.today);
     elWeek.textContent = fmtMoney(money.week);
     elMonth.textContent = fmtMoney(money.month);
